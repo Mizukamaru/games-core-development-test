@@ -1,0 +1,57 @@
+.container {
+    display: flex;
+    align-items: center;
+    border: 1px solid black;
+    width: 600px;
+    position: fixed;
+}
+#shape-count {
+    height: 20.5px;
+    color: white;
+    font-size: 18px;
+    z-index: 2147483648;
+    border: 2px black solid;
+    padding: 3px;
+    flex: 1;
+    border-collapse: collapse;
+    border-right: none;
+    background-color: #5A5A5A;
+}
+#surface-area {
+    height: 20.5px;
+    color: white;
+    font-size: 18px;
+    z-index: 2147483648;
+    border: 2px black solid;
+    padding: 3px;
+    flex: 1;
+    border-collapse: collapse;
+    background-color: #5A5A5A;
+}
+button, span{
+    position: relative;
+    z-index: 2147483648;
+}
+span {
+    display: block;
+    white-space: pre-wrap;
+    text-align: center;
+    margin-top: 3px;
+}
+.content-container {
+    position: absolute;
+    width: 200px;
+    bottom: 20px;
+    padding: 10px;
+    z-index: 2147483648;
+    justify-content: center;
+    display: flex;
+}
+.content-container > div {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+body {
+    width: 100%;
+}

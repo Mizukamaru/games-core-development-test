@@ -1,0 +1,276 @@
+<!doctype html>
+<html>
+  <head>
+    <script src="https://pixijs.download/release/pixi.min.js"></script>
+    <link rel="stylesheet" type="text/css" href="index.css">
+  </head>
+  <body>
+    <div class="content-container">
+        <div>
+            <div style="display: flex;">
+                <button id="decrementNumber">-</button>
+                <button id="incrementNumber" >+</button>
+            </div>
+            <span>Number of shapes per second</span>
+        </div>
+        <div>
+            <div style="display: flex;">
+                <button id="decrementGravity">-</button>
+                <button id="incrementGravity">+</button>
+            </div>
+            <span>Gravity value</span>
+        </div>
+    </div>
+    <div id="canvas-container">
+        <script>
+            let app = new PIXI.Application({
+                resizeTo: window,
+                backgroundColor: 'rgb(112, 128, 144)'
+            })
+            document.body.appendChild(app.view)
+            app.view.style.position = 'absolute'
+            app.view.style.top = 0
+            app.view.style.left = 0
+
+            let frame = new PIXI.Graphics()
+            frame.beginFill(0x666666)
+            frame.lineStyle({ color: 0x00000, width: 4, alignment: 0 })
+            frame.drawRect(0, 0, 800, 600)
+            frame.position.set((app.view.width - frame.width) / 2, (app.view.height - frame.height) / 2)
+            app.stage.addChild(frame)
+
+            // correctly positioned elements when starting the app
+            window.addEventListener("load", (event) => {
+                document.getElementsByClassName('container')[0].style.left =  `${frame.x}px`
+                document.getElementsByClassName('container')[0].style.top =  `${frame.y - 28.5}px`
+
+                document.getElementsByClassName('content-container')[0].style.left = `${frame.x + frame.width/2 - 110}px`
+            })
+
+            console.log(frame)
+
+            let mask = new PIXI.Graphics()
+            mask.beginFill(0xffffff)
+            mask.drawRect(0, 0, 792, 592)
+            mask.endFill()
+
+            let maskContainer = new PIXI.Container()
+            maskContainer.mask = mask
+            maskContainer.addChild(mask)
+            maskContainer.position.set(4, 4)
+            frame.addChild(maskContainer)
+
+            const ShapeTypes = ['triangle', 'rectangle', 'circle', 'elipse', 'pentagon', 'hexagon', 'star']
+            const Colors = [0xff0000, 0x00ff00, 0x0000ff, 0xffff00, 0xff00ff]
+            let numberOfShapes = 0
+            let surfaceArea = 0
+
+            let shapeGenerationInterval
+            let generatingFreq = 1000
+            let shapesPerSecond = 1
+            let gravity = 2
+
+            // text fields - number of shapes & surface area covered by them
+            function updateTextFields() {
+                document.getElementById('shape-count').innerText = `Number of Shapes: ${numberOfShapes}`
+                document.getElementById('surface-area').innerText = `Surface Area: ${surfaceArea.toFixed(2)} px^2`                
+            }
+
+            class Shape {
+                constructor(x, y, type, color) {
+                    this.x = x
+                    this.y = y
+                    this.type = type
+                    this.color = color
+                    this.graphics = new PIXI.Graphics()
+                    this.isRemoved = false
+                    this.area = 0
+                    this.drawShape()
+                    maskContainer.addChild(this.graphics)
+
+                    this.graphics.interactive = true
+                    this.graphics.on('click', () => this.removeShape())
+                }
+                drawShape() {
+                    const { x, y, graphics, type, color } = this
+                    graphics.clear()
+                    graphics.beginFill(color)
+                    switch (type) {
+                        case 'triangle':
+                            this.createPolygon(3)
+                            this.approximateAreaUsingBounds()
+                            this.area = this.area / 2
+                            surfaceArea += this.area
+                            break
+                        case 'rectangle':
+                            const h = Math.floor(Math.random() * 51 + 50)
+                            const w = Math.floor(Math.random() * 51 + 50)
+                            this.area = h * w
+                            surfaceArea += this.area
+                            graphics.drawRect(x, y, w, h)
+                            break
+                        case 'pentagon':
+                            this.createPolygon(5)
+                            this.approximateAreaUsingBounds()
+                            surfaceArea += this.area
+                            break
+                        case 'hexagon':
+                            this.createPolygon(6)
+                            this.approximateAreaUsingBounds()
+                            surfaceArea += this.area
+                            break
+                        case 'circle':
+                            const radius = Math.floor(Math.random() * 51 + 50)
+                            this.area = Math.PI * Math.pow(radius, 2)
+                            surfaceArea += this.area
+                            graphics.drawCircle(x, y, radius)
+                            break
+                        case 'elipse':
+                            const semiMajorAxis = Math.floor(Math.random() * 51 + 50)
+                            const semiMinorAxis = Math.floor(Math.random() * 51 + 50)
+                            this.area = Math.PI * semiMajorAxis * semiMinorAxis
+                            surfaceArea += this.area
+                            graphics.drawEllipse(x, y, semiMajorAxis, semiMinorAxis)
+                            break
+                        case 'star':
+                            this.createStar(Math.floor(Math.random() * 8 + 3))
+                            this.approximateAreaUsingBounds()
+                            surfaceArea += this.area
+                            break
+                    }
+                    numberOfShapes++
+                    graphics.endFill()
+                }
+                removeShape() {
+                    if (!this.isRemoved) {
+                        this.isRemoved = true
+                        maskContainer.removeChild(this.graphics)
+                        numberOfShapes--
+                        surfaceArea -= this.area
+                    }
+                }
+                createPolygon(sides) {
+                    const { x, y, graphics, type, color, area } = this
+                    const radius = Math.floor(Math.random() * 51 + 50)
+                    const angleIncrement = (Math.PI * 2) / sides
+
+                    for (let i = 0; i < sides; i++) {
+                        const xx = x + radius * Math.cos(i * angleIncrement)
+                        const yy = y + radius * Math.sin(i * angleIncrement)
+
+                        if (i === 0) {
+                            graphics.moveTo(xx, yy)
+                        } else {
+                            graphics.lineTo(xx, yy)
+                        }
+                    }
+
+                    graphics.lineTo(x + radius * Math.cos(0), y + radius * Math.sin(0))
+                }        
+                createStar(numberOfPoints) {
+                    const { x, y, graphics, type, color } = this
+                    const outerRadius = Math.floor(Math.random() * 51 + 50)
+                    const innerRadius = outerRadius/2
+                    const angleIncrement = (Math.PI * 2) / (numberOfPoints * 2)
+                    for (let i = 0; i < numberOfPoints * 2; i++) {
+                        const radius = i % 2 === 0 ? outerRadius : innerRadius
+                        const xx = x + radius * Math.cos(i * angleIncrement)
+                        const yy = y + radius * Math.sin(i * angleIncrement)
+                        if (i === 0) {
+                            graphics.moveTo(xx, yy)
+                        } else {
+                            graphics.lineTo(xx, yy)
+                        }
+                    }
+                }
+                approximateAreaUsingBounds() {
+                    const bounds = this.graphics.getBounds()
+                    const width = bounds.width
+                    const height = bounds.height
+                    this.area = width * height
+                }
+            }
+
+            // continously generating random shapes
+            function generateRandomShapes () {
+                let fallingShapeY = 0
+                let min = 0
+                let max = 792
+                let type = ShapeTypes[Math.floor(Math.random() * ShapeTypes.length)]
+                let color = Colors[Math.floor(Math.random() * Colors.length)]
+                let shape = new Shape(Math.floor(Math.random() * (max - min + 1)) + min, -80, type, color)
+                updateTextFields()
+                shape.eventMode = 'static'
+                app.ticker.add(() => {
+                    const deltaTime = app.ticker.deltaTime
+                    fallingShapeY += gravity * deltaTime
+                    shape.graphics.y = fallingShapeY
+                    if (fallingShapeY > mask.height + shape.graphics.height) {
+                        shape.removeShape()
+                        updateTextFields()
+                    }
+                })
+            }
+
+            shapeGenerationInterval = setInterval(generateRandomShapes, generatingFreq/shapesPerSecond)
+
+            // adding / removing shapes when clicked
+            frame.eventMode = 'static'
+            frame.addEventListener('click', (event) => {
+                if (event.target instanceof PIXI.Graphics && event.target !== frame) {
+                    event.target.parent?.removeShape()
+                } else {
+                    let type = ShapeTypes[Math.floor(Math.random() * ShapeTypes.length)]
+                    let color = Colors[Math.floor(Math.random() * Colors.length)]
+                    let { x, y } = event.data.global
+                    let shape = new Shape(x - (document.querySelector('canvas').width - frame.width)/2, y - (document.querySelector('canvas').height - frame.height)/2, type, color)
+                    updateTextFields()
+                    let fallingShapeY = 0
+                    app.ticker.add(() => {
+                        const deltaTime = app.ticker.deltaTime
+                        fallingShapeY += gravity * deltaTime
+                        shape.graphics.y = fallingShapeY
+                        if (fallingShapeY > mask.height + shape.graphics.height) {
+                            shape.removeShape()
+                            updateTextFields()
+                        }
+                    })
+                }  
+            })
+
+
+            // controls - increase or decrease the number of shapes generated per second / the gravity value
+            document.getElementById('decrementNumber').addEventListener('click', () =>{
+                if (shapesPerSecond > 1) {
+                    shapesPerSecond -= 1
+                }
+                console.log(shapesPerSecond)
+                clearInterval(shapeGenerationInterval)
+                shapeGenerationInterval = setInterval(generateRandomShapes, generatingFreq/shapesPerSecond)
+                updateTextFields()
+            })
+            document.getElementById('incrementNumber').addEventListener('click', () =>{
+                shapesPerSecond += 1
+                clearInterval(shapeGenerationInterval)
+                shapeGenerationInterval = setInterval(generateRandomShapes, generatingFreq/shapesPerSecond)
+                updateTextFields()
+            })
+
+            document.getElementById('decrementGravity').addEventListener('click', () =>{
+                if (gravity > 1) {
+                    gravity -= 1
+                }
+                updateTextFields()
+            })
+            document.getElementById('incrementGravity').addEventListener('click', () =>{
+                gravity += 1
+                updateTextFields()
+            })
+        </script>  
+    </div>
+    <div class="container">
+        <div id="shape-count">Number of Shapes: 0</div>
+        <div id="surface-area">Surface Area: 0 px^2</div>
+    </div>
+  </body>
+</html>
